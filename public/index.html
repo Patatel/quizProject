@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Connexion / Inscription</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Plateforme de Quiz</h1>
+
+    <div id="form-toggle">
+      <button onclick="showForm('login')">Connexion</button>
+      <button onclick="showForm('register')">Inscription</button>
+    </div>
+
+    <form id="login-form" class="form" onsubmit="handleLogin(event)">
+      <h2>Connexion</h2>
+      <input type="email" id="login-email" placeholder="Email" required>
+      <input type="password" id="login-password" placeholder="Mot de passe" required>
+      <button type="submit">Se connecter</button>
+      <p id="login-message"></p>
+    </form>
+
+    <form id="register-form" class="form hidden" onsubmit="handleRegister(event)">
+      <h2>Inscription</h2>
+      <input type="text" id="register-name" placeholder="Nom" required>
+      <input type="email" id="register-email" placeholder="Email" required>
+      <input type="password" id="register-password" placeholder="Mot de passe" required>
+      <button type="submit">S'inscrire</button>
+      <p id="register-message"></p>
+    </form>
+  </div>
+
+  <script src="js/script.js"></script>
+</body>
+</html>

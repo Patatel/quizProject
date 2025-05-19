@@ -32,28 +32,31 @@ function handleRegister(e) {
   .catch(err => console.error(err));
 }
 
-
 // Envoie la requête de connexion
-function handleLogin(e) {
-  e.preventDefault();
+function handleLogin(event) {
+  event.preventDefault();
 
   const email = document.getElementById('login-email').value;
   const password = document.getElementById('login-password').value;
 
   fetch('/quizProject/api/route.php?route=login', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json'
+    },
     body: JSON.stringify({ email, password })
   })
-  .then(res => res.json())
+  .then(response => response.json())
   .then(data => {
-    document.getElementById('login-message').textContent = data.message || data.error;
     if (data.user) {
-      localStorage.setItem('user', JSON.stringify(data.user));
-      alert('Connexion réussie. Bienvenue ' + data.user.name + ' !');
-      // window.location.href = "quiz.html";
+      // ✅ Connexion réussie, on redirige vers la page home
+      window.location.href = '/quizProject/public/html/home.html'; // Assure-toi que ce fichier existe bien
+    } else {
+      document.getElementById('login-message').textContent = data.error || "Erreur inconnue";
     }
   })
-  .catch(err => console.error(err));
+  .catch(error => {
+    console.error("Erreur lors de la connexion :", error);
+    document.getElementById('login-message').textContent = "Erreur réseau ou serveur.";
+  });
 }
-

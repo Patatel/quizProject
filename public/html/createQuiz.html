@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Créer un Quiz</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="navbar">
+    <h1>Créer un nouveau Quiz</h1>
+    <nav>
+      <button onclick="window.location.href='home.html'">Accueil</button>
+      <button onclick="window.location.href='my_quizzes.html'">Mes Quiz</button>
+    </nav>
+  </header>
+
+  <main>
+    <form id="quiz-form">
+      <label for="title">Titre du Quiz :</label>
+      <input type="text" id="title" name="title" required>
+
+      <label for="description">Description :</label>
+      <textarea id="description" name="description" rows="4" required></textarea>
+
+      <button type="submit">Créer le Quiz</button>
+      <p id="message"></p>
+    </form>
+  </main>
+
+  <script>
+    document.getElementById("quiz-form").addEventListener("submit", async function(event) {
+      event.preventDefault();
+
+      const title = document.getElementById("title").value;
+      const description = document.getElementById("description").value;
+      const userId = 1; // À remplacer par l’ID réel depuis la session
+
+      try {
+        const response = await fetch('http://localhost/quizProject/api/route.php?route=create_quiz', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ title, description, user_id: userId })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          window.location.href = 'my_quizzes.html';
+        } else {
+          document.getElementById("message").textContent = result.error || "Erreur lors de la création du quiz";
+        }
+
+      } catch (error) {
+        document.getElementById("message").textContent = "Erreur réseau.";
+      }
+    });
+  </script>
+</body>
+</html>

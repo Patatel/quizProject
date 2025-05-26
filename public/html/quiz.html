@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mes Quiz</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Mes Quiz</h1>
+    <button onclick="window.location.href='createQuiz.html'" class="btn-add">+ Nouveau Quiz</button>
+  </header>
+
+  <main>
+    <table>
+      <thead>
+        <tr>
+          <th>Titre</th>
+          <th>Date de création</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="quiz-table-body">
+        <!-- Les lignes des quiz seront ajoutées dynamiquement ici -->
+      </tbody>
+    </table>
+  </main>
+
+  <script>
+    // Simulation de récupération de données depuis l’API (à remplacer par un vrai fetch)
+    const userQuizzes = [
+      { id: 1, title: "Quiz Histoire", created_at: "2024-05-01" },
+      { id: 2, title: "Quiz Musique", created_at: "2024-05-18" },
+    ];
+
+    const tbody = document.getElementById("quiz-table-body");
+    userQuizzes.forEach((quiz) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${quiz.title}</td>
+        <td>${quiz.created_at}</td>
+        <td>
+          <button onclick="editQuiz(${quiz.id})">Modifier</button>
+          <button onclick="deleteQuiz(${quiz.id})" class="danger">Supprimer</button>
+        </td>
+      `;
+      tbody.appendChild(row);
+    });
+
+    function editQuiz(id) {
+      window.location.href = `edit-quiz.html?id=${id}`;
+    }
+
+    function deleteQuiz(id) {
+      if (confirm("Êtes-vous sûr de vouloir supprimer ce quiz ?")) {
+        // Appel à l'API pour supprimer le quiz
+        alert(`Quiz ${id} supprimé (simulation)`);
+        // Rafraîchir la page ou supprimer la ligne
+      }
+    }
+  </script>
+</body>
+</html>

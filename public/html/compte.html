@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Mon Compte</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Gestion du Compte</h1>
+    <form id="account-form" onsubmit="updateAccount(event)">
+      <label for="name">Nom</label>
+      <input type="text" id="name" name="name" required>
+
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required>
+
+      <label for="password">Nouveau mot de passe</label>
+      <input type="password" id="password" name="password" placeholder="Laissez vide si inchangé">
+
+      <button type="submit">Enregistrer</button>
+      <p id="message"></p>
+    </form>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (!user) return window.location.href = 'index.html';
+
+      document.getElementById('name').value = user.name;
+      document.getElementById('email').value = user.email;
+    });
+
+    function updateAccount(e) {
+      e.preventDefault();
+      const user = JSON.parse(localStorage.getItem('user'));
+      const name = document.getElementById('name').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      fetch('http://localhost/quizProject/api/route.php?route=update_user', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            id: user.id,
+            name: name ? name : null,
+            email: email ? email : null,
+            password: password ? password : null
+        })
+        })
+        .then(response => response.json())
+        .then(data => {
+        if (data.message === "Mise à jour réussie") {
+            alert("Mise à jour réussie !");
+            window.location.href = "home.html"; // Redirection vers la page d'accueil
+        } else {
+            alert("Erreur : " + data.error);
+        }
+        })
+        .catch(error => {
+        console.error("Erreur :", error);
+        });
+    }
+  </script>
+</body>
+</html>

@@ -1,40 +1,79 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <title>Accueil - Plateforme de Quiz</title>
     <link rel="stylesheet" href="/../quizProject/public/css/home.css">
 </head>
+
 <body>
     <header>
         <h1>Bienvenue sur QuizPlatform</h1>
         <nav>
             <ul>
-                <li><a href="account_settings.html">Paramètres du compte</a></li>
+                <li><a href="compte.html">Paramètres du compte</a></li>
                 <li><a href="quiz.html">Mes quiz</a></li>
-                <li><a href="my_results.html">Mes résultats</a></li>
+                <li><a href="result.html">Mes résultats</a></li>
             </ul>
         </nav>
     </header>
 
     <main>
-        <section class="quiz-list">
+        <section id="quiz-container" class="quiz-list">
             <h2>Quiz disponibles</h2>
-            <div class="quiz-card">
-                <h3>Culture Générale</h3>
-                <p>Testez vos connaissances sur divers sujets !</p>
-                <a href="quiz.php?id=1" class="start-btn">Commencer</a>
-            </div>
-            <div class="quiz-card">
-                <h3>Histoire de France</h3>
-                <p>Saurez-vous répondre aux grandes questions historiques ?</p>
-                <a href="quiz.php?id=2" class="start-btn">Commencer</a>
-            </div>
         </section>
     </main>
 
     <footer>
         <p>&copy; 2025 QuizPlatform. Tous droits réservés.</p>
     </footer>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user) return window.location.href = 'index.html';
+
+            console.log("Utilisateur connecté :", user);
+
+            try {
+                const response = await fetch(`http://localhost/quizProject/api/route.php?route=all_quizzes`);
+                const quizzes = await response.json();
+
+                console.log("Quizzes récupérés :", quizzes);
+
+                if (response.ok) {
+                    const container = document.getElementById('quiz-container');
+
+                    quizzes.forEach(quiz => {
+                        const card = document.createElement('div');
+                        card.className = 'quiz-card';
+
+                        const title = document.createElement('h3');
+                        title.textContent = quiz.title;
+
+                        const description = document.createElement('p');
+                        description.textContent = quiz.description;
+
+                        const startBtn = document.createElement('a');
+                        startBtn.textContent = 'Commencer';
+                        startBtn.href = `quiz.php?id=${quiz.id}`;
+                        startBtn.className = 'start-btn';
+
+                        card.appendChild(title);
+                        card.appendChild(description);
+                        card.appendChild(startBtn);
+
+                        container.appendChild(card);
+                    });
+
+                } else {
+                    document.getElementById("message").textContent = quizzes.error || "Erreur lors du chargement des quizz.";
+                }
+            } catch (error) {
+                document.getElementById("message").textContent = "Erreur réseau.";
+            }
+        });
+    </script>
 </body>
+
 </html>

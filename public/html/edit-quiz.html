@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <title>Modifier un Quiz</title>
+    <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+    <header>
+        <h1>Modifier le Quiz</h1>
+    </header>
+
+    <main>
+        <form id="edit-form">
+            <input type="hidden" id="quiz-id" />
+            <label for="title">Titre :</label>
+            <input type="text" id="title" required />
+
+            <label for="description">Description :</label>
+            <textarea id="description" required></textarea>
+
+            <button type="submit">Enregistrer les modifications</button>
+        </form>
+
+        <section>
+            <h2>Modifier les Questions</h2>
+            <form id="question-form">
+                <div id="questions-container"></div>
+                <button type="button" onclick="addQuestion()">Ajouter une question</button>
+                <button type="submit">Enregistrer les questions</button>
+            </form>
+        </section>
+
+        <div id="message"></div>
+    </main>
+
+    <script>
+        let questionCount = 0;
+        const maxQuestions = 10;
+
+        function addQuestion(initialText = "") {
+            if (questionCount >= maxQuestions) return alert("Maximum 10 questions");
+            questionCount++;
+
+            const container = document.getElementById("questions-container");
+
+            const div = document.createElement("div");
+            div.className = "question-item";
+
+            const input = document.createElement("input");
+            input.type = "text";
+            input.name = "question";
+            input.required = true;
+            input.placeholder = `Question ${questionCount}`;
+            input.value = initialText;
+
+            // Ajouter un bouton pour supprimer la question
+            const btnDelete = document.createElement("button");
+            btnDelete.type = "button";
+            btnDelete.textContent = "Supprimer";
+            btnDelete.style.marginLeft = "10px";
+            btnDelete.onclick = () => {
+                container.removeChild(div);
+                questionCount--;
+                refreshPlaceholders();
+            };
+
+            div.appendChild(input);
+            div.appendChild(btnDelete);
+
+            container.appendChild(div);
+        }
+
+        // Met à jour les placeholders "Question 1", "Question 2", ...
+        function refreshPlaceholders() {
+            const inputs = document.querySelectorAll("#questions-container input[name='question']");
+            inputs.forEach((input, idx) => {
+                input.placeholder = `Question ${idx + 1}`;
+            });
+        }
+
+        // Charger les questions existantes du quiz
+        async function loadQuestions(quizId) {
+            try {
+                const response = await fetch(`http://localhost/quizProject/api/route.php?route=get_questions&quiz_id=${quizId}`);
+                if (!response.ok) throw new Error("Erreur lors du chargement des questions");
+                const questions = await response.json();
+
+                // Afficher chaque question dans un input
+                questions.forEach(q => addQuestion(q.text));
+            } catch (err) {
+                document.getElementById("message").textContent = err.message;
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const params = new URLSearchParams(window.location.search);
+            const quizId = params.get("id");
+            if (!quizId) {
+                document.getElementById("message").textContent = "ID du quiz manquant";
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost/quizProject/api/route.php?route=get_quiz&id=${quizId}`);
+                if (!response.ok) throw new Error("Erreur lors du chargement du quiz");
+                const quiz = await response.json();
+
+                document.getElementById("quiz-id").value = quiz.id;
+                document.getElementById("title").value = quiz.title;
+                document.getElementById("description").value = quiz.description;
+
+                // Charger les questions existantes
+                await loadQuestions(quiz.id);
+
+            } catch (err) {
+                document.getElementById("message").textContent = err.message || "Erreur réseau.";
+            }
+        });
+
+        // Soumission du formulaire pour modifier le quiz (titre, description)
+        document.getElementById("edit-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const id = document.getElementById("quiz-id").value;
+            const title = document.getElementById("title").value;
+            const description = document.getElementById("description").value;
+
+            try {
+                const response = await fetch("http://localhost/quizProject/api/route.php?route=update_quiz", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id, title, description })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert("Quiz mis à jour !");
+                    // Ne pas rediriger ici, l'utilisateur peut continuer à modifier questions
+                } else {
+                    alert(result.error || "Erreur de mise à jour.");
+                }
+            } catch (err) {
+                alert("Erreur réseau.");
+            }
+        });
+
+        // Soumission du formulaire pour modifier/ajouter les questions
+        document.getElementById("question-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const quizId = document.getElementById("quiz-id").value;
+            const questionInputs = document.querySelectorAll("#questions-container input[name='question']");
+            const questions = Array.from(questionInputs).map(i => i.value.trim()).filter(Boolean);
+
+            if (questions.length < 1 || questions.length > maxQuestions) {
+                return alert("Veuillez saisir entre 1 et 10 questions.");
+            }
+
+            try {
+                const response = await fetch("http://localhost/quizProject/api/route.php?route=update_questions", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ quiz_id: quizId, questions })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert("Questions mises à jour !");
+                    // Optionnel : recharger la page ou garder l'utilisateur sur place
+                } else {
+                    alert(result.error || "Erreur lors de la mise à jour des questions.");
+                }
+            } catch (err) {
+                alert("Erreur réseau.");
+            }
+        });
+    </script>
+</body>
+</html>

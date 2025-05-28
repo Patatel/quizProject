@@ -40,6 +40,9 @@ async function createQuiz(event) {
 
   const result = await res.json();
   alert(result.message || result.error);
+  if (data.success) {
+    window.location.href = "http://localhost/quizProject/public/html/quiz.html?success=1";
+  }
   loadQuizzes();
 }
 

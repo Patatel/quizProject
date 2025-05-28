@@ -1,63 +1,114 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
-  <meta charset="UTF-8" />
-  <title>Mes Quiz</title>
-  <link rel="stylesheet" href="../css/style.css" />
+    <meta charset="UTF-8" />
+    <title>Mes Quiz</title>
+    <link rel="stylesheet" href="../css/style.css" />
 </head>
+
 <body>
-  <header>
-    <h1>Mes Quiz</h1>
-    <button onclick="window.location.href='createQuiz.html'" class="btn-add">+ Nouveau Quiz</button>
-  </header>
+    <header>
+        <h1>Mes Quiz</h1>
+        <button onclick="window.location.href='createQuiz.html'" class="btn-add">+ Nouveau Quiz</button>
+    </header>
 
-  <main>
-    <table>
-      <thead>
-        <tr>
-          <th>Titre</th>
-          <th>Date de création</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="quiz-table-body">
-        <!-- Les lignes des quiz seront ajoutées dynamiquement ici -->
-      </tbody>
-    </table>
-  </main>
+    <main>
+        <table>
+            <thead>
+                <tr>
+                    <th>Titre</th>
+                    <th>Date de création</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="quiz-table-body">
+                <!-- Les lignes des quiz seront ajoutées dynamiquement ici -->
+            </tbody>
+        </table>
+    </main>
+    <div id="success-message" class="success hidden">Quiz ajouté avec succès !</div>
+    <div id="update-message" class="success hidden">Quiz modifier avec succès !</div>
+    <script>
+        async function loadUserQuizzes() {
+            const user = JSON.parse(localStorage.getItem("user"));
+            if (!user) return (window.location.href = "index.html");
 
-  <script>
-    // Simulation de récupération de données depuis l’API (à remplacer par un vrai fetch)
-    const userQuizzes = [
-      { id: 1, title: "Quiz Histoire", created_at: "2024-05-01" },
-      { id: 2, title: "Quiz Musique", created_at: "2024-05-18" },
-    ];
+            try {
+                const response = await fetch(`http://localhost/quizProject/api/route.php?route=my_quizzes&user_id=${user.id}`);
+                const userQuizzes = await response.json();
 
-    const tbody = document.getElementById("quiz-table-body");
-    userQuizzes.forEach((quiz) => {
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${quiz.title}</td>
-        <td>${quiz.created_at}</td>
-        <td>
-          <button onclick="editQuiz(${quiz.id})">Modifier</button>
-          <button onclick="deleteQuiz(${quiz.id})" class="danger">Supprimer</button>
-        </td>
-      `;
-      tbody.appendChild(row);
-    });
+                if (!response.ok) {
+                    document.getElementById("error-message").textContent = userQuizzes.error || "Erreur lors du chargement des quiz.";
+                    return;
+                }
 
-    function editQuiz(id) {
-      window.location.href = `edit-quiz.html?id=${id}`;
-    }
+                const tbody = document.getElementById("quiz-table-body");
+                tbody.innerHTML = ""; // Vider le contenu précédent
 
-    function deleteQuiz(id) {
-      if (confirm("Êtes-vous sûr de vouloir supprimer ce quiz ?")) {
-        // Appel à l'API pour supprimer le quiz
-        alert(`Quiz ${id} supprimé (simulation)`);
-        // Rafraîchir la page ou supprimer la ligne
-      }
-    }
-  </script>
+                userQuizzes.forEach((quiz) => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+          <td>${quiz.title}</td>
+          <td>${quiz.created_at}</td>
+          <td>
+            <button onclick="editQuiz(${quiz.id})">Modifier</button>
+            <button onclick="deleteQuiz(${quiz.id})" class="danger">Supprimer</button>
+          </td>
+        `;
+                    tbody.appendChild(row);
+                });
+
+            } catch (error) {
+                document.getElementById("error-message").textContent = "Erreur réseau.";
+            }
+        }
+
+        function editQuiz(id) {
+            window.location.href = `edit-quiz.html?id=${id}`;
+        }
+
+        async function deleteQuiz(id) {
+            if (!confirm("Êtes-vous sûr de vouloir supprimer ce quiz ?")) return;
+
+            try {
+                const response = await fetch("http://localhost/quizProject/api/route.php?route=delete_quiz", {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded"
+                    },
+                    body: `id=${id}`
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert("Quiz supprimé avec succès !");
+                    loadUserQuizzes(); // Rafraîchir la liste
+                } else {
+                    alert(result.error || "Erreur lors de la suppression du quiz.");
+                }
+            } catch (error) {
+                alert("Erreur réseau.");
+            }
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            loadUserQuizzes();
+
+            const params = new URLSearchParams(window.location.search);
+            if (params.get("success") === "1") {
+                const msg = document.getElementById("success-message");
+                msg.classList.remove("hidden");
+                setTimeout(() => msg.classList.add("hidden"), 3000);
+            }
+              if (params.get("update") === "1") {
+                const msg = document.getElementById("update-message");
+                msg.classList.remove("hidden");
+                setTimeout(() => msg.classList.add("hidden"), 3000);
+            }
+        });
+    </script>
 </body>
+
 </html>

@@ -1,61 +1,128 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
-  <meta charset="UTF-8">
-  <title>Créer un Quiz</title>
-  <link rel="stylesheet" href="../css/style.css">
+    <meta charset="UTF-8">
+    <title>Créer un Quiz</title>
+    <link rel="stylesheet" href="../css/style.css">
 </head>
+
 <body>
-  <header class="navbar">
-    <h1>Créer un nouveau Quiz</h1>
-    <nav>
-      <button onclick="window.location.href='home.html'">Accueil</button>
-      <button onclick="window.location.href='my_quizzes.html'">Mes Quiz</button>
-    </nav>
-  </header>
+    <header class="navbar">
+        <h1>Créer un nouveau Quiz</h1>
+        <nav>
+            <button onclick="window.location.href='home.html'">Accueil</button>
+            <button onclick="window.location.href='my_quizzes.html'">Mes Quiz</button>
+        </nav>
+    </header>
 
-  <main>
-    <form id="quiz-form">
-      <label for="title">Titre du Quiz :</label>
-      <input type="text" id="title" name="title" required>
+    <main>
+        <form id="quiz-form">
+            <label for="title">Titre du Quiz :</label>
+            <input type="text" id="title" name="title" required>
 
-      <label for="description">Description :</label>
-      <textarea id="description" name="description" rows="4" required></textarea>
+            <label for="description">Description :</label>
+            <textarea id="description" name="description" rows="4" required></textarea>
 
-      <button type="submit">Créer le Quiz</button>
-      <p id="message"></p>
-    </form>
-  </main>
+            <button type="submit">Créer le Quiz</button>
+            <p id="message"></p>
+        </form>
+        <section>
+            <h2>Ajouter des Questions</h2>
+            <input type="hidden" id="quiz-id" />
+            <form id="question-form">
+                <div id="questions-container"></div>
+                <button type="button" onclick="addQuestion()">Ajouter une question</button>
+                <button type="submit">Enregistrer les questions</button>
+            </form>
+        </section>
 
-  <script>
-    document.getElementById("quiz-form").addEventListener("submit", async function(event) {
-      event.preventDefault();
+    </main>
+    <script>
+        let questionCount = 0;
 
-      const title = document.getElementById("title").value;
-      const description = document.getElementById("description").value;
-      const userId = 1; // À remplacer par l’ID réel depuis la session
+        function addQuestion(initialText = "") {
+            if (questionCount >= 10) return alert("Maximum 10 questions");
+            questionCount++;
 
-      try {
-        const response = await fetch('http://localhost/quizProject/api/route.php?route=create_quiz', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ title, description, user_id: userId })
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          window.location.href = 'my_quizzes.html';
-        } else {
-          document.getElementById("message").textContent = result.error || "Erreur lors de la création du quiz";
+            const container = document.getElementById("questions-container");
+            const input = document.createElement("input");
+            input.type = "text";
+            input.name = "question";
+            input.required = true;
+            input.placeholder = `Question ${questionCount}`;
+            input.value = initialText;
+            container.appendChild(input);
+            container.appendChild(document.createElement("br"));
         }
 
-      } catch (error) {
-        document.getElementById("message").textContent = "Erreur réseau.";
-      }
-    });
-  </script>
+        // Traitement du formulaire de questions
+        document.getElementById("question-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const quizId = document.getElementById("quiz-id")?.value;
+            if (!quizId) return alert("Quiz non identifié");
+
+            const questionInputs = document.querySelectorAll("#questions-container input");
+            const questions = Array.from(questionInputs).map(i => i.value.trim()).filter(Boolean);
+
+            if (questions.length < 1 || questions.length > 10) {
+                return alert("Veuillez saisir entre 1 et 10 questions.");
+            }
+
+            try {
+                const response = await fetch("http://localhost/quizProject/api/route.php?route=add_questions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ quiz_id: quizId, questions })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert("Questions ajoutées !");
+                    window.location.href = "quiz.html";
+                } else {
+                    alert(result.error || "Erreur lors de l'enregistrement des questions.");
+                }
+            } catch (err) {
+                alert("Erreur réseau.");
+            }
+        });
+    </script>
+
+    <script>
+        document.getElementById("quiz-form").addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            const title = document.getElementById("title").value;
+            const description = document.getElementById("description").value;
+            const userId = 1; // À remplacer par l’ID réel depuis la session
+
+            try {
+                const response = await fetch('http://localhost/quizProject/api/route.php?route=create_quiz', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ title, description, user_id: userId })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    const quizId = result.id;
+                    document.getElementById("quiz-id").value = quizId; // <-- stocker l'ID pour l'ajout de questions
+                    alert("Quiz créé ! Ajoutez maintenant vos questions.");
+                } else {
+                    document.getElementById("message").textContent = result.error || "Erreur lors de la création du quiz";
+                }
+
+            } catch (error) {
+                document.getElementById("message").textContent = "Erreur réseau.";
+            }
+        });
+    </script>
 </body>
+
 </html>

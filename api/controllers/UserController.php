@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../models/UserModel.php';
 
 function updateUser() {
     global $pdo;
@@ -21,11 +21,10 @@ function updateUser() {
         return;
     }
 
-    try {
-        $stmt = $pdo->prepare("UPDATE Users SET name = ?, email = ? WHERE id = ?");
-        $stmt->execute([$name, $email, $id]);
+    $userModel = new UserModel($pdo);
+    if ($userModel->updateUser($id, $name, $email)) {
         echo json_encode(["message" => "Mise à jour réussie"]);
-    } catch (PDOException $e) {
+    } else {
         http_response_code(500);
         echo json_encode(["error" => "Erreur lors de la mise à jour"]);
     }

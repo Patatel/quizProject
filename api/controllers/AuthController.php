@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../models/UserModel.php';
 
 function register() {
     global $pdo;
@@ -21,16 +21,14 @@ function register() {
         return;
     }
 
-    try {
-        $stmt = $pdo->prepare("INSERT INTO Users (name, email, password) VALUES (?, ?, ?)");
-        $stmt->execute([$name, $email, $password]);
+    $userModel = new UserModel($pdo);
+    if ($userModel->createUser($name, $email, $password)) {
         echo json_encode(["message" => "Inscription réussie"]);
-    } catch (PDOException $e) {
+    } else {
         http_response_code(400);
         echo json_encode(["error" => "Email déjà utilisé"]);
     }
 }
-
 
 function login() {
     global $pdo;
@@ -42,12 +40,10 @@ function login() {
         return;
     }
 
-    $stmt = $pdo->prepare("SELECT * FROM Users WHERE email = ?");
-    $stmt->execute([$data['email']]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    $userModel = new UserModel($pdo);
+    $user = $userModel->findUserByEmail($data['email']);
 
     if ($user && password_verify($data['password'], $user['password'])) {
-        // (Tu peux générer un token ici si tu veux)
         echo json_encode([
             "message" => "Connexion réussie",
             "user" => [

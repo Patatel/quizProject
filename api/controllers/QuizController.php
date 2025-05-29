@@ -1,13 +1,10 @@
 <?php
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../models/QuizModel.php';
 
 function createQuiz()
 {
     global $pdo;
     $data = json_decode(file_get_contents("php://input"), true);
-
-    // Log des données reçues
-    error_log("Données reçues dans createQuiz: " . print_r($data, true));
 
     if (!isset($data['title'], $data['description'], $data['user_id'])) {
         http_response_code(400);
@@ -19,31 +16,23 @@ function createQuiz()
     $description = htmlspecialchars($data['description']);
     $userId = intval($data['user_id']);
 
-    // Log des données traitées
-    error_log("Données traitées - userId: " . $userId);
+    $quizModel = new QuizModel($pdo);
+    $quizId = $quizModel->createQuiz($title, $description, $userId);
 
-    try {
-        $stmt = $pdo->prepare("INSERT INTO quiz (title, description, user_id) VALUES (?, ?, ?)");
-        $stmt->execute([$title, $description, $userId]);
-
+    if ($quizId) {
         http_response_code(201);
-        $quizId = $pdo->lastInsertId();
         echo json_encode(["message" => "Quiz créé avec succès", "id" => $quizId]);
-    } catch (PDOException $e) {
-        error_log("Erreur PDO dans createQuiz: " . $e->getMessage());
+    } else {
         http_response_code(500);
-        echo json_encode(["error" => "Erreur serveur : " . $e->getMessage()]);
+        echo json_encode(["error" => "Erreur serveur"]);
     }
 }
 
 function getQuizzes()
 {
     global $pdo;
-
-    $stmt = $pdo->prepare("SELECT * FROM quiz");
-    $stmt->execute(); // Nécessaire pour exécuter la requête
-    $quizzes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
+    $quizModel = new QuizModel($pdo);
+    $quizzes = $quizModel->getQuizzes();
     echo json_encode($quizzes);
 }
 
@@ -52,29 +41,15 @@ function getUserQuizzes()
     global $pdo;
     $userId = $_GET['user_id'] ?? null;
 
-    if (!$userId) {
-        http_response_code(400);
-        echo json_encode(["error" => "ID utilisateur requis"]);
-        return;
-    }
-
-    // Vérifier que l'ID est bien un nombre
-    if (!is_numeric($userId)) {
+    if (!$userId || !is_numeric($userId)) {
         http_response_code(400);
         echo json_encode(["error" => "ID utilisateur invalide"]);
         return;
     }
 
-    try {
-        $stmt = $pdo->prepare("SELECT id, title, description, created_at FROM quiz WHERE user_id = ? ORDER BY created_at DESC");
-        $stmt->execute([$userId]);
-        $quizzes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        echo json_encode($quizzes);
-    } catch (PDOException $e) {
-        http_response_code(500);
-        echo json_encode(["error" => "Erreur serveur lors de la récupération des quiz"]);
-    }
+    $quizModel = new QuizModel($pdo);
+    $quizzes = $quizModel->getUserQuizzes($userId);
+    echo json_encode($quizzes);
 }
 
 function getQuizById()
@@ -88,9 +63,8 @@ function getQuizById()
         return;
     }
 
-    $stmt = $pdo->prepare("SELECT * FROM quiz WHERE id = ?");
-    $stmt->execute([$id]);
-    $quiz = $stmt->fetch(PDO::FETCH_ASSOC);
+    $quizModel = new QuizModel($pdo);
+    $quiz = $quizModel->getQuizById($id);
 
     if ($quiz) {
         echo json_encode($quiz);
@@ -112,9 +86,13 @@ function deleteQuiz()
         return;
     }
 
-    $stmt = $pdo->prepare("DELETE FROM quiz WHERE id = ?");
-    $stmt->execute([$quizId]);
-    echo json_encode(["message" => "Quiz supprimé avec succès"]);
+    $quizModel = new QuizModel($pdo);
+    if ($quizModel->deleteQuiz($quizId)) {
+        echo json_encode(["message" => "Quiz supprimé avec succès"]);
+    } else {
+        http_response_code(500);
+        echo json_encode(["error" => "Erreur serveur"]);
+    }
 }
 
 function updateQuiz()
@@ -132,14 +110,12 @@ function updateQuiz()
         return;
     }
 
-    try {
-        $stmt = $pdo->prepare("UPDATE quiz SET title = ?, description = ? WHERE id = ?");
-        $stmt->execute([$title, $description, $quizId]);
-
+    $quizModel = new QuizModel($pdo);
+    if ($quizModel->updateQuiz($quizId, $title, $description)) {
         echo json_encode(["message" => "Quiz mis à jour avec succès"]);
-    } catch (PDOException $e) {
+    } else {
         http_response_code(500);
-        echo json_encode(["error" => "Erreur serveur : " . $e->getMessage()]);
+        echo json_encode(["error" => "Erreur serveur"]);
     }
 }
 
@@ -157,49 +133,20 @@ function createQuestionsForQuiz()
         return;
     }
 
-    // Vérification du nombre de réponses pour chaque question
     foreach ($questions as $q) {
-        if (!isset($q['answers']) || count($q['answers']) < 2) {
+        if (!isset($q['answers']) || count($q['answers']) < 2 || trim($q['answers'][0]) === '' || trim($q['answers'][1]) === '') {
             http_response_code(400);
-            echo json_encode(["error" => "Chaque question doit avoir au moins 2 réponses."]);
-            return;
-        }
-        // Vérifier que les deux premières réponses ne sont pas vides
-        if (trim($q['answers'][0]) === '' || trim($q['answers'][1]) === '') {
-            http_response_code(400);
-            echo json_encode(["error" => "Les deux premières réponses sont obligatoires."]);
+            echo json_encode(["error" => "Chaque question doit avoir au moins 2 réponses non vides."]);
             return;
         }
     }
 
-    try {
-        $pdo->beginTransaction();
-
-        foreach ($questions as $q) {
-            $stmt = $pdo->prepare("INSERT INTO questions (text) VALUES (?)");
-            $stmt->execute([$q['text']]);
-            $questionId = $pdo->lastInsertId();
-
-            $linkStmt = $pdo->prepare("INSERT INTO questionquiz (question_id, quiz_id) VALUES (?, ?)");
-            $linkStmt->execute([$questionId, $quizId]);
-
-            // Sauvegarder uniquement les réponses non vides
-            foreach ($q['answers'] as $i => $answerText) {
-                if (trim($answerText) !== '') {
-                    $isCorrect = ($i === $q['correctAnswerIndex']) ? 1 : 0;
-                    $stmtAns = $pdo->prepare("INSERT INTO answers (question_id, text, is_correct) VALUES (?, ?, ?)");
-                    $stmtAns->execute([$questionId, $answerText, $isCorrect]);
-                }
-            }
-        }
-
-        $pdo->commit();
-
+    $quizModel = new QuizModel($pdo);
+    if ($quizModel->createQuestionsForQuiz($quizId, $questions)) {
         echo json_encode(["message" => "Questions ajoutées avec succès."]);
-    } catch (PDOException $e) {
-        $pdo->rollBack();
+    } else {
         http_response_code(500);
-        echo json_encode(["error" => "Erreur serveur : " . $e->getMessage()]);
+        echo json_encode(["error" => "Erreur serveur"]);
     }
 }
 
@@ -217,73 +164,20 @@ function updateQuestions()
         return;
     }
 
-    // Vérification du nombre de réponses pour chaque question
     foreach ($questions as $q) {
-        if (!isset($q['answers']) || count($q['answers']) < 2) {
+        if (!isset($q['answers']) || count($q['answers']) < 2 || trim($q['answers'][0]) === '' || trim($q['answers'][1]) === '') {
             http_response_code(400);
-            echo json_encode(["error" => "Chaque question doit avoir au moins 2 réponses."]);
-            return;
-        }
-        // Vérifier que les deux premières réponses ne sont pas vides
-        if (trim($q['answers'][0]) === '' || trim($q['answers'][1]) === '') {
-            http_response_code(400);
-            echo json_encode(["error" => "Les deux premières réponses sont obligatoires."]);
+            echo json_encode(["error" => "Chaque question doit avoir au moins 2 réponses non vides."]);
             return;
         }
     }
 
-    try {
-        $pdo->beginTransaction();
-
-        // 1. Récupérer les IDs des questions associées au quiz pour suppression
-        $stmt = $pdo->prepare("SELECT question_id FROM questionquiz WHERE quiz_id = ?");
-        $stmt->execute([$quizId]);
-        $questionIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-        if ($questionIds) {
-            // Supprimer les réponses associées à ces questions
-            $inQuery = implode(',', array_fill(0, count($questionIds), '?'));
-            $delAnswersStmt = $pdo->prepare("DELETE FROM answers WHERE question_id IN ($inQuery)");
-            $delAnswersStmt->execute($questionIds);
-
-            // Supprimer les liens dans questionquiz
-            $delLinkStmt = $pdo->prepare("DELETE FROM questionquiz WHERE quiz_id = ?");
-            $delLinkStmt->execute([$quizId]);
-
-            // Supprimer les questions en elles-mêmes
-            $delQuestionsStmt = $pdo->prepare("DELETE FROM questions WHERE id IN ($inQuery)");
-            $delQuestionsStmt->execute($questionIds);
-        }
-
-        // 2. Insérer les nouvelles questions, leurs liens et leurs réponses
-        foreach ($questions as $q) {
-            $cleanText = htmlspecialchars(trim($q['text']));
-            if ($cleanText === '') continue; // Ignore les questions vides
-
-            $stmtInsertQ = $pdo->prepare("INSERT INTO questions (text) VALUES (?)");
-            $stmtInsertQ->execute([$cleanText]);
-            $questionId = $pdo->lastInsertId();
-
-            $stmtLink = $pdo->prepare("INSERT INTO questionquiz (question_id, quiz_id) VALUES (?, ?)");
-            $stmtLink->execute([$questionId, $quizId]);
-
-            // Sauvegarder uniquement les réponses non vides
-            foreach ($q['answers'] as $i => $answerText) {
-                if (trim($answerText) !== '') {
-                    $isCorrect = ($i === $q['correctAnswerIndex']) ? 1 : 0;
-                    $stmtAns = $pdo->prepare("INSERT INTO answers (question_id, text, is_correct) VALUES (?, ?, ?)");
-                    $stmtAns->execute([$questionId, $answerText, $isCorrect]);
-                }
-            }
-        }
-
-        $pdo->commit();
-
+    $quizModel = new QuizModel($pdo);
+    if ($quizModel->updateQuestions($quizId, $questions)) {
         echo json_encode(["message" => "Questions mises à jour avec succès."]);
-    } catch (PDOException $e) {
-        $pdo->rollBack();
+    } else {
         http_response_code(500);
-        echo json_encode(["error" => "Erreur serveur : " . $e->getMessage()]);
+        echo json_encode(["error" => "Erreur serveur"]);
     }
 }
 
@@ -298,36 +192,57 @@ function getQuestionsByQuizId()
         return;
     }
 
+    $quizModel = new QuizModel($pdo);
+    $questions = $quizModel->getQuestionsByQuizId($quizId);
+    echo json_encode($questions);
+}
+
+function getQuizQuestions()
+{
+    global $pdo;
+    $quizId = $_GET['quiz_id'] ?? null;
+
+    header('Content-Type: application/json; charset=utf-8'); // ← important
+
+    if (!$quizId) {
+        http_response_code(400);
+        echo json_encode(["error" => "ID du quiz manquant"]);
+        return;
+    }
+
     try {
-        $stmt = $pdo->prepare("
-            SELECT q.id, q.text
-            FROM questions q
-            JOIN questionquiz qq ON q.id = qq.question_id
-            WHERE qq.quiz_id = ?
-            ORDER BY q.id ASC
-        ");
-        $stmt->execute([$quizId]);
-        $questions = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        // Fetch answers for each question
-        foreach ($questions as &$q) {
-            $stmtAns = $pdo->prepare("SELECT id, text, is_correct FROM answers WHERE question_id = ?");
-            $stmtAns->execute([$q['id']]);
-            $answers = $stmtAns->fetchAll(PDO::FETCH_ASSOC);
-            // Return only the answer text for the frontend
-            $q['answers'] = array_map(function($a) { return $a['text']; }, $answers);
-            // Optionally, you can also return which is correct
-            foreach ($answers as $idx => $a) {
-                if ($a['is_correct']) {
-                    $q['correctAnswerIndex'] = $idx;
-                    break;
-                }
-            }
-        }
-
+        $quizModel = new QuizModel($pdo);
+        $questions = $quizModel->getQuizQuestions($quizId);
         echo json_encode($questions);
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         http_response_code(500);
-        echo json_encode(["error" => "Erreur serveur : " . $e->getMessage()]);
+        echo json_encode([
+            "error" => "Erreur lors de la récupération des questions",
+            "details" => $e->getMessage()
+        ]);
+    }
+}
+
+function userSubmitAnswers()
+{
+    global $pdo;
+    $data = json_decode(file_get_contents('php://input'), true);
+
+    if (!$data || !isset($data['user_id']) || !isset($data['quiz_id']) || !isset($data['answers'])) {
+        http_response_code(400);
+        echo json_encode(["error" => "Données invalides"]);
+        return;
+    }
+
+    try {
+        $quizModel = new QuizModel($pdo);
+        $result = $quizModel->userSubmitAnswers($data['user_id'], $data['quiz_id'], $data['answers']);
+        echo json_encode($result);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            "error" => "Erreur lors de la soumission des réponses",
+            "details" => $e->getMessage()
+        ]);
     }
 }

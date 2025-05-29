@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Quiz</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/result.css">
+</head>
+
+<body class="bg-light">
+    <header class="bg-primary text-white p-3 d-flex">
+        <div class="container">
+            <h1 class="h3">Quiz</h1>
+        </div>
+        <nav>
+            <button onclick="window.location.href='home.html'" class="btn btn-light">Accueil</button>
+        </nav>
+    </header>
+
+    <main class="container my-5">
+        <div id="quiz-container"></div>
+        <button id="submit-quiz" class="btn btn-primary">Soumettre le Quiz</button>
+        <div id="result-container" class="mt-3"></div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 QuizPlatform. Tous droits réservés.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let quizId;
+        let userId;
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user) {
+                window.location.href = 'index.html';
+                return;
+            }
+            userId = user.id;
+
+            const params = new URLSearchParams(window.location.search);
+            quizId = params.get("id");
+            if (!quizId) {
+                alert("ID du quiz manquant");
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost/quizProject/api/route.php?route=get_quiz_questions&quiz_id=${quizId}`);
+                if (!response.ok) throw new Error("Erreur lors du chargement des questions");
+
+                const contentType = response.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    throw new Error("La réponse n'est pas du JSON valide");
+                }
+
+                const questions = await response.json();
+                displayQuestions(questions);
+            } catch (err) {
+                console.log(err.message);
+                alert(err.message || "Erreur réseau.");
+            }
+        });
+
+        function displayQuestions(questions) {
+            const container = document.getElementById("quiz-container");
+
+            questions.forEach((question, index) => {
+                const questionDiv = document.createElement("div");
+                questionDiv.className = "mb-3 question";
+                questionDiv.dataset.questionId = question.id;
+
+                const questionText = document.createElement("p");
+                questionText.textContent = `${index + 1}. ${question.text}`;
+                questionDiv.appendChild(questionText);
+
+                question.answers.forEach((answer, answerIndex) => {
+                    const answerDiv = document.createElement("div");
+                    answerDiv.className = "form-check";
+
+                    const input = document.createElement("input");
+                    input.type = "radio";
+                    input.name = `question_${question.id}`;
+                    input.value = answer.text;
+                    input.dataset.correct = answer.is_correct ? answer.text : null;
+                    input.className = "form-check-input";
+                    input.required = true;
+
+                    const label = document.createElement("label");
+                    label.className = "form-check-label";
+                    label.textContent = answer.text;
+
+                    answerDiv.appendChild(input);
+                    answerDiv.appendChild(label);
+                    questionDiv.appendChild(answerDiv);
+                });
+
+                container.appendChild(questionDiv);
+            });
+        }
+
+        document.getElementById("submit-quiz").addEventListener("click", async () => {
+            const user = JSON.parse(localStorage.getItem("user"));
+            const quizId = new URLSearchParams(window.location.search).get("id");
+
+            const answers = [];
+            let allAnswered = true;
+
+            document.querySelectorAll(".question").forEach(question => {
+                const questionId = question.dataset.questionId;
+                const selected = question.querySelector("input[type='radio']:checked");
+
+                if (selected) {
+                    answers.push({
+                        question_id: parseInt(questionId),
+                        user_answer: selected.value
+                    });
+                } else {
+                    allAnswered = false;
+                }
+            });
+
+            if (!allAnswered) {
+                alert("Veuillez répondre à toutes les questions avant de soumettre.");
+                return;
+            }
+            console.log(answers)
+            const payload = {
+                user_id: user.id,
+                quiz_id: parseInt(quizId),
+                answers: answers
+            };
+
+            try {
+                const response = await fetch("http://localhost/quizProject/api/route.php?route=user_submit_answers", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert(`Bravo ! Votre score : ${result.score}/${result.total_questions} (${result.percentage}%)`);
+                    window.location.href = "result.html";
+                } else {
+                    alert("Erreur lors de la soumission.");
+                }
+            } catch (error) {
+                console.log(error)
+                console.error(error);
+                alert("Erreur réseau lors de la soumission.");
+            }
+        });
+    </script>
+</body>
+
+</html>

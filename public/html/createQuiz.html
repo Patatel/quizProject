@@ -4,40 +4,54 @@
 <head>
     <meta charset="UTF-8">
     <title>Créer un Quiz</title>
-    <link rel="stylesheet" href="../css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/create-quiz.css" />
 </head>
 
-<body>
-    <header class="navbar">
-        <h1>Créer un nouveau Quiz</h1>
+<body class="bg-light">
+    <header class="d-flex justify-content-between align-items-center px-4">
+        <h1 class="h4">Créer un nouveau Quiz</h1>
         <nav>
-            <button onclick="window.location.href='home.html'">Accueil</button>
-            <button onclick="window.location.href='my_quizzes.html'">Mes Quiz</button>
+            <button onclick="window.location.href='home.html'" class="btn btn-light">Accueil</button>
+            <button onclick="window.location.href='my_quizzes.html'" class="btn btn-outline-light">Mes Quiz</button>
         </nav>
     </header>
 
-    <main>
-        <form id="quiz-form">
-            <label for="title">Titre du Quiz :</label>
-            <input type="text" id="title" name="title" required>
+    <main class="container my-5">
+        <form id="quiz-form" class="mb-5">
+            <div class="mb-3">
+                <label for="title" class="form-label">Titre du Quiz :</label>
+                <input type="text" class="form-control" id="title" name="title" required>
+            </div>
 
-            <label for="description">Description :</label>
-            <textarea id="description" name="description" rows="4" required></textarea>
+            <div class="mb-3">
+                <label for="description" class="form-label">Description :</label>
+                <textarea class="form-control" id="description" name="description" rows="4" required></textarea>
+            </div>
 
-            <button type="submit">Créer le Quiz</button>
-            <p id="message"></p>
+            <button type="submit" class="btn btn-primary">Créer le Quiz</button>
+            <p id="message" class="mt-2 text-danger"></p>
         </form>
+
         <section>
-            <h2>Ajouter des Questions</h2>
+            <h2 class="mb-3">Ajouter des Questions</h2>
             <input type="hidden" id="quiz-id" />
             <form id="question-form">
                 <div id="questions-container"></div>
-                <button type="button" onclick="addQuestion()">Ajouter une question</button>
-                <button type="submit">Enregistrer les questions</button>
+                <div class="d-flex gap-2 mt-3">
+                    <button type="button" onclick="addQuestion()" class="btn btn-outline-primary">Ajouter une question</button>
+                    <button type="submit" class="btn btn-success">Enregistrer les questions</button>
+                </div>
             </form>
         </section>
-
     </main>
+
+    <footer>
+        <p>&copy; 2025 QuizPlatform. Tous droits réservés.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let questionCount = 0;
 
@@ -46,7 +60,7 @@
             questionCount++;
 
             const container = document.getElementById("questions-container");
-            
+
             const questionDiv = document.createElement("div");
             questionDiv.className = "question-item";
             questionDiv.style.marginBottom = "20px";
@@ -205,10 +219,10 @@
             const title = document.getElementById("title").value;
             const description = document.getElementById("description").value;
 
-            const quizData = { 
-                title, 
-                description, 
-                user_id: user.id 
+            const quizData = {
+                title,
+                description,
+                user_id: user.id
             };
             console.log("Données envoyées:", quizData);
 

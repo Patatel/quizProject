@@ -22,16 +22,22 @@ main {
     flex: 1;
 }
 
-p{ 
+p {
     margin-bottom: 0;
 }
 
-.quiz-card {
-    margin-bottom: 1.5rem;
+.question-item {
+    border: 1px solid #dee2e6;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    background-color: #f8f9fa;
 }
 
-.start-btn {
-    margin-top: 1rem;
+.answers-container .answer-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 footer {
@@ -39,9 +45,4 @@ footer {
     color: #fff;
     text-align: center;
     padding: 1rem 0;
-}
-
-#message {
-    color: red;
-    margin-top: 1rem;
 }

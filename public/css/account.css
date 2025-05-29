@@ -12,36 +12,17 @@ body {
     flex-direction: column;
 }
 
-header h1 {
-    margin: 2rem 0 1rem;
-    text-align: center;
-}
-
 main {
-    padding: 20px;
     flex: 1;
 }
 
-p{ 
+p {
     margin-bottom: 0;
-}
-
-.quiz-card {
-    margin-bottom: 1.5rem;
-}
-
-.start-btn {
-    margin-top: 1rem;
 }
 
 footer {
     background-color: #343a40;
-    color: #fff;
+    color: white;
     text-align: center;
-    padding: 1rem 0;
-}
-
-#message {
-    color: red;
-    margin-top: 1rem;
+    padding: 1rem;
 }

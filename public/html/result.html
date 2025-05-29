@@ -1,35 +1,68 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
   <meta charset="UTF-8">
   <title>Mes Résultats</title>
-  <link rel="stylesheet" href="/../quizProject/public/css/home.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="../css/result.css">
 </head>
-<body>
-  <header>
-    <h1>Mes Résultats</h1>
-    <nav>
-      <a href="home.html">Accueil</a>
-      <a href="quiz.html">Mes Quiz</a>
-      <a href="compte.html">Mon Compte</a>
-    </nav>
-  </header>
 
-  <main>
-    <table>
+<body class="bg-light">
+  <header class="bg-primary text-white py-4 position-relative">
+    <div class="container d-flex justify-content-between align-items-center">
+      <h1 class="h3">Mes Résultats</h1>
+      <div>
+        <button onclick="window.location.href='home.html'" class="btn btn-light">Accueil</button>
+      </div>
+    </div>
+  </header>
+  <main class="container my-5">
+    <table class="table table-striped" id="results-table">
       <thead>
         <tr>
           <th>Quiz</th>
           <th>Score</th>
+          <th>Pourcentage</th>
           <th>Date</th>
         </tr>
       </thead>
-      <tbody id="results-table-body">
-        <!-- Résultats dynamiques -->
-      </tbody>
+      <tbody></tbody>
     </table>
   </main>
+  <footer>
+    <p>&copy; 2025 QuizPlatform. Tous droits réservés.</p>
+  </footer>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const user = JSON.parse(localStorage.getItem("user"));
+      if (!user) {
+        window.location.href = "index.html";
+        return;
+      }
 
-  <script src="js/results.js"></script>
+      try {
+        const res = await fetch(`http://localhost/quizProject/api/route.php?route=get_user_results&user_id=${user.id}`);
+        const results = await res.json();
+
+        const tbody = document.querySelector("#results-table tbody");
+        results.forEach(result => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+                        <td>${result.title}</td>
+                        <td>${result.score}/${result.total_questions}</td>
+                        <td>${result.percentage}%</td>
+                        <td>${new Date(result.date_passed).toLocaleDateString()}</td>
+                    `;
+          tbody.appendChild(tr);
+        });
+      } catch (error) {
+        alert("Erreur lors du chargement des résultats.");
+        console.error(error);
+      }
+    });
+  </script>
 </body>
+
 </html>

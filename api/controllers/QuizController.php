@@ -138,16 +138,40 @@ function createQuestionsForQuiz()
         return;
     }
 
+    // Vérification du nombre de réponses pour chaque question
+    foreach ($questions as $q) {
+        if (!isset($q['answers']) || count($q['answers']) < 2) {
+            http_response_code(400);
+            echo json_encode(["error" => "Chaque question doit avoir au moins 2 réponses."]);
+            return;
+        }
+        // Vérifier que les deux premières réponses ne sont pas vides
+        if (trim($q['answers'][0]) === '' || trim($q['answers'][1]) === '') {
+            http_response_code(400);
+            echo json_encode(["error" => "Les deux premières réponses sont obligatoires."]);
+            return;
+        }
+    }
+
     try {
         $pdo->beginTransaction();
 
-        foreach ($questions as $questionText) {
+        foreach ($questions as $q) {
             $stmt = $pdo->prepare("INSERT INTO questions (text) VALUES (?)");
-            $stmt->execute([$questionText]);
+            $stmt->execute([$q['text']]);
             $questionId = $pdo->lastInsertId();
 
             $linkStmt = $pdo->prepare("INSERT INTO questionquiz (question_id, quiz_id) VALUES (?, ?)");
             $linkStmt->execute([$questionId, $quizId]);
+
+            // Sauvegarder uniquement les réponses non vides
+            foreach ($q['answers'] as $i => $answerText) {
+                if (trim($answerText) !== '') {
+                    $isCorrect = ($i === $q['correctAnswerIndex']) ? 1 : 0;
+                    $stmtAns = $pdo->prepare("INSERT INTO answers (question_id, text, is_correct) VALUES (?, ?, ?)");
+                    $stmtAns->execute([$questionId, $answerText, $isCorrect]);
+                }
+            }
         }
 
         $pdo->commit();
@@ -174,6 +198,21 @@ function updateQuestions()
         return;
     }
 
+    // Vérification du nombre de réponses pour chaque question
+    foreach ($questions as $q) {
+        if (!isset($q['answers']) || count($q['answers']) < 2) {
+            http_response_code(400);
+            echo json_encode(["error" => "Chaque question doit avoir au moins 2 réponses."]);
+            return;
+        }
+        // Vérifier que les deux premières réponses ne sont pas vides
+        if (trim($q['answers'][0]) === '' || trim($q['answers'][1]) === '') {
+            http_response_code(400);
+            echo json_encode(["error" => "Les deux premières réponses sont obligatoires."]);
+            return;
+        }
+    }
+
     try {
         $pdo->beginTransaction();
 
@@ -183,8 +222,12 @@ function updateQuestions()
         $questionIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
         if ($questionIds) {
-            // Supprimer les liens dans questionquiz
+            // Supprimer les réponses associées à ces questions
             $inQuery = implode(',', array_fill(0, count($questionIds), '?'));
+            $delAnswersStmt = $pdo->prepare("DELETE FROM answers WHERE question_id IN ($inQuery)");
+            $delAnswersStmt->execute($questionIds);
+
+            // Supprimer les liens dans questionquiz
             $delLinkStmt = $pdo->prepare("DELETE FROM questionquiz WHERE quiz_id = ?");
             $delLinkStmt->execute([$quizId]);
 
@@ -193,9 +236,9 @@ function updateQuestions()
             $delQuestionsStmt->execute($questionIds);
         }
 
-        // 2. Insérer les nouvelles questions et leurs liens
-        foreach ($questions as $questionText) {
-            $cleanText = htmlspecialchars(trim($questionText));
+        // 2. Insérer les nouvelles questions, leurs liens et leurs réponses
+        foreach ($questions as $q) {
+            $cleanText = htmlspecialchars(trim($q['text']));
             if ($cleanText === '') continue; // Ignore les questions vides
 
             $stmtInsertQ = $pdo->prepare("INSERT INTO questions (text) VALUES (?)");
@@ -204,6 +247,15 @@ function updateQuestions()
 
             $stmtLink = $pdo->prepare("INSERT INTO questionquiz (question_id, quiz_id) VALUES (?, ?)");
             $stmtLink->execute([$questionId, $quizId]);
+
+            // Sauvegarder uniquement les réponses non vides
+            foreach ($q['answers'] as $i => $answerText) {
+                if (trim($answerText) !== '') {
+                    $isCorrect = ($i === $q['correctAnswerIndex']) ? 1 : 0;
+                    $stmtAns = $pdo->prepare("INSERT INTO answers (question_id, text, is_correct) VALUES (?, ?, ?)");
+                    $stmtAns->execute([$questionId, $answerText, $isCorrect]);
+                }
+            }
         }
 
         $pdo->commit();
@@ -237,6 +289,22 @@ function getQuestionsByQuizId()
         ");
         $stmt->execute([$quizId]);
         $questions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Fetch answers for each question
+        foreach ($questions as &$q) {
+            $stmtAns = $pdo->prepare("SELECT id, text, is_correct FROM answers WHERE question_id = ?");
+            $stmtAns->execute([$q['id']]);
+            $answers = $stmtAns->fetchAll(PDO::FETCH_ASSOC);
+            // Return only the answer text for the frontend
+            $q['answers'] = array_map(function($a) { return $a['text']; }, $answers);
+            // Optionally, you can also return which is correct
+            foreach ($answers as $idx => $a) {
+                if ($a['is_correct']) {
+                    $q['correctAnswerIndex'] = $idx;
+                    break;
+                }
+            }
+        }
 
         echo json_encode($questions);
     } catch (PDOException $e) {

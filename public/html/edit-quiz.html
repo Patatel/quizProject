@@ -62,34 +62,32 @@
             answersDiv.className = "answers-container";
             answersDiv.style.marginLeft = "20px";
 
-            // Add 4 answer fields
-            for (let i = 0; i < 4; i++) {
-                const answerDiv = document.createElement("div");
-                answerDiv.style.marginBottom = "5px";
-
-                const answerInput = document.createElement("input");
-                answerInput.type = "text";
-                answerInput.name = `answer_${questionCount}_${i}`;
-                answerInput.required = true;
-                answerInput.placeholder = `Réponse ${i + 1}`;
-                answerInput.value = initialAnswers[i] || "";
-
-                const correctRadio = document.createElement("input");
-                correctRadio.type = "radio";
-                correctRadio.name = `correct_${questionCount}`;
-                correctRadio.value = i;
-                if (i === 0) correctRadio.checked = true;
-
-                const label = document.createElement("label");
-                label.textContent = "Correcte";
-
-                answerDiv.appendChild(answerInput);
-                answerDiv.appendChild(correctRadio);
-                answerDiv.appendChild(label);
-                answersDiv.appendChild(answerDiv);
+            // Add initial answers or default 2 answer fields
+            if (initialAnswers && initialAnswers.length > 0) {
+                initialAnswers.forEach((answer, index) => {
+                    addAnswerField(answersDiv, questionCount, index, answer);
+                });
+            } else {
+                for (let i = 0; i < 2; i++) {
+                    addAnswerField(answersDiv, questionCount, i);
+                }
             }
 
-            // Delete button
+            // Add answer button
+            const addAnswerBtn = document.createElement("button");
+            addAnswerBtn.type = "button";
+            addAnswerBtn.textContent = "Ajouter une réponse";
+            addAnswerBtn.style.marginTop = "10px";
+            addAnswerBtn.onclick = () => {
+                const currentAnswers = answersDiv.querySelectorAll(".answer-field");
+                if (currentAnswers.length >= 4) {
+                    alert("Maximum 4 réponses par question");
+                    return;
+                }
+                addAnswerField(answersDiv, questionCount, currentAnswers.length);
+            };
+
+            // Delete question button
             const btnDelete = document.createElement("button");
             btnDelete.type = "button";
             btnDelete.textContent = "Supprimer";
@@ -102,9 +100,60 @@
 
             div.appendChild(questionDiv);
             div.appendChild(answersDiv);
+            div.appendChild(addAnswerBtn);
             div.appendChild(btnDelete);
 
             container.appendChild(div);
+        }
+
+        function addAnswerField(container, questionCount, answerIndex, initialValue = "") {
+            const answerDiv = document.createElement("div");
+            answerDiv.className = "answer-field";
+            answerDiv.style.marginBottom = "5px";
+
+            const answerInput = document.createElement("input");
+            answerInput.type = "text";
+            answerInput.name = `answer_${questionCount}_${answerIndex}`;
+            answerInput.required = true;
+            answerInput.placeholder = `Réponse ${answerIndex + 1}`;
+            answerInput.value = initialValue;
+
+            const correctRadio = document.createElement("input");
+            correctRadio.type = "radio";
+            correctRadio.name = `correct_${questionCount}`;
+            correctRadio.value = answerIndex;
+            if (answerIndex === 0) correctRadio.checked = true;
+
+            const label = document.createElement("label");
+            label.textContent = "Correcte";
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.textContent = "×";
+            deleteBtn.style.marginLeft = "5px";
+            deleteBtn.onclick = () => {
+                const currentAnswers = container.querySelectorAll(".answer-field");
+                if (currentAnswers.length <= 2) {
+                    alert("Minimum 2 réponses par question");
+                    return;
+                }
+                container.removeChild(answerDiv);
+                // Réorganiser les indices des réponses restantes
+                const remainingAnswers = container.querySelectorAll(".answer-field");
+                remainingAnswers.forEach((ans, idx) => {
+                    const input = ans.querySelector("input[type='text']");
+                    const radio = ans.querySelector("input[type='radio']");
+                    input.name = `answer_${questionCount}_${idx}`;
+                    radio.value = idx;
+                    input.placeholder = `Réponse ${idx + 1}`;
+                });
+            };
+
+            answerDiv.appendChild(answerInput);
+            answerDiv.appendChild(correctRadio);
+            answerDiv.appendChild(label);
+            answerDiv.appendChild(deleteBtn);
+            container.appendChild(answerDiv);
         }
 
         // Met à jour les placeholders "Question 1", "Question 2", ...

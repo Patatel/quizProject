@@ -194,9 +194,23 @@
         document.getElementById("quiz-form").addEventListener("submit", async function (event) {
             event.preventDefault();
 
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user) {
+                window.location.href = "index.html";
+                return;
+            }
+
+            console.log("Données utilisateur:", user);
+
             const title = document.getElementById("title").value;
             const description = document.getElementById("description").value;
-            const userId = 1; // À remplacer par l'ID réel depuis la session
+
+            const quizData = { 
+                title, 
+                description, 
+                user_id: user.id 
+            };
+            console.log("Données envoyées:", quizData);
 
             try {
                 const response = await fetch('http://localhost/quizProject/api/route.php?route=create_quiz', {
@@ -204,20 +218,22 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ title, description, user_id: userId })
+                    body: JSON.stringify(quizData)
                 });
 
                 const result = await response.json();
+                console.log("Réponse du serveur:", result);
 
                 if (response.ok) {
                     const quizId = result.id;
-                    document.getElementById("quiz-id").value = quizId; // <-- stocker l'ID pour l'ajout de questions
+                    document.getElementById("quiz-id").value = quizId;
                     alert("Quiz créé ! Ajoutez maintenant vos questions.");
                 } else {
                     document.getElementById("message").textContent = result.error || "Erreur lors de la création du quiz";
                 }
 
             } catch (error) {
+                console.error("Erreur complète:", error);
                 document.getElementById("message").textContent = "Erreur réseau.";
             }
         });

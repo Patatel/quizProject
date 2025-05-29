@@ -6,6 +6,9 @@ function createQuiz()
     global $pdo;
     $data = json_decode(file_get_contents("php://input"), true);
 
+    // Log des données reçues
+    error_log("Données reçues dans createQuiz: " . print_r($data, true));
+
     if (!isset($data['title'], $data['description'], $data['user_id'])) {
         http_response_code(400);
         echo json_encode(["error" => "Champs manquants"]);
@@ -16,6 +19,9 @@ function createQuiz()
     $description = htmlspecialchars($data['description']);
     $userId = intval($data['user_id']);
 
+    // Log des données traitées
+    error_log("Données traitées - userId: " . $userId);
+
     try {
         $stmt = $pdo->prepare("INSERT INTO quiz (title, description, user_id) VALUES (?, ?, ?)");
         $stmt->execute([$title, $description, $userId]);
@@ -24,6 +30,7 @@ function createQuiz()
         $quizId = $pdo->lastInsertId();
         echo json_encode(["message" => "Quiz créé avec succès", "id" => $quizId]);
     } catch (PDOException $e) {
+        error_log("Erreur PDO dans createQuiz: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(["error" => "Erreur serveur : " . $e->getMessage()]);
     }
@@ -51,11 +58,23 @@ function getUserQuizzes()
         return;
     }
 
-    $stmt = $pdo->prepare("SELECT * FROM quiz WHERE user_id = ?");
-    $stmt->execute([$userId]);
-    $quizzes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Vérifier que l'ID est bien un nombre
+    if (!is_numeric($userId)) {
+        http_response_code(400);
+        echo json_encode(["error" => "ID utilisateur invalide"]);
+        return;
+    }
 
-    echo json_encode($quizzes);
+    try {
+        $stmt = $pdo->prepare("SELECT id, title, description, created_at FROM quiz WHERE user_id = ? ORDER BY created_at DESC");
+        $stmt->execute([$userId]);
+        $quizzes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode($quizzes);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(["error" => "Erreur serveur lors de la récupération des quiz"]);
+    }
 }
 
 function getQuizById()

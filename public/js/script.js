@@ -49,8 +49,10 @@ function handleLogin(event) {
   .then(response => response.json())
   .then(data => {
     if (data.user) {
-      // ✅ Connexion réussie, on redirige vers la page home
-      window.location.href = '/quizProject/public/html/home.html'; // Assure-toi que ce fichier existe bien
+      // Stocker les données de l'utilisateur dans le localStorage
+      localStorage.setItem('user', JSON.stringify(data.user));
+      // Rediriger vers la page home
+      window.location.href = '/quizProject/public/html/home.html';
     } else {
       document.getElementById('login-message').textContent = data.error || "Erreur inconnue";
     }

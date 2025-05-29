@@ -32,19 +32,27 @@
     <script>
         async function loadUserQuizzes() {
             const user = JSON.parse(localStorage.getItem("user"));
-            if (!user) return (window.location.href = "index.html");
+            if (!user) {
+                window.location.href = "index.html";
+                return;
+            }
 
             try {
-                const response = await fetch(`http://localhost/quizProject/api/route.php?route=my_quizzes&user_id=${user.id}`);
+                const response = await fetch(`http://localhost/quizProject/api/route.php?route=my_quizzes&user_id=${encodeURIComponent(user.id)}`);
                 const userQuizzes = await response.json();
 
                 if (!response.ok) {
-                    document.getElementById("error-message").textContent = userQuizzes.error || "Erreur lors du chargement des quiz.";
+                    console.error("Erreur:", userQuizzes.error);
                     return;
                 }
 
                 const tbody = document.getElementById("quiz-table-body");
                 tbody.innerHTML = ""; // Vider le contenu précédent
+
+                if (!Array.isArray(userQuizzes) || userQuizzes.length === 0) {
+                    tbody.innerHTML = "<tr><td colspan='3'>Aucun quiz trouvé</td></tr>";
+                    return;
+                }
 
                 userQuizzes.forEach((quiz) => {
                     const row = document.createElement("tr");
@@ -60,7 +68,7 @@
                 });
 
             } catch (error) {
-                document.getElementById("error-message").textContent = "Erreur réseau.";
+                console.error("Erreur réseau:", error);
             }
         }
 

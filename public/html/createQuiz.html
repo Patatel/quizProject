@@ -46,25 +46,81 @@
             questionCount++;
 
             const container = document.getElementById("questions-container");
+            
+            const questionDiv = document.createElement("div");
+            questionDiv.className = "question-item";
+            questionDiv.style.marginBottom = "20px";
+
+            // Question input
             const input = document.createElement("input");
             input.type = "text";
             input.name = "question";
             input.required = true;
             input.placeholder = `Question ${questionCount}`;
             input.value = initialText;
-            container.appendChild(input);
+            input.style.marginBottom = "10px";
+            questionDiv.appendChild(input);
+
+            // Answers container
+            const answersDiv = document.createElement("div");
+            answersDiv.className = "answers-container";
+            answersDiv.style.marginLeft = "20px";
+
+            // Add 4 answer fields
+            for (let i = 0; i < 4; i++) {
+                const answerDiv = document.createElement("div");
+                answerDiv.style.marginBottom = "5px";
+
+                const answerInput = document.createElement("input");
+                answerInput.type = "text";
+                answerInput.name = `answer_${questionCount}_${i}`;
+                answerInput.required = true;
+                answerInput.placeholder = `Réponse ${i + 1}`;
+
+                const correctRadio = document.createElement("input");
+                correctRadio.type = "radio";
+                correctRadio.name = `correct_${questionCount}`;
+                correctRadio.value = i;
+                if (i === 0) correctRadio.checked = true;
+
+                const label = document.createElement("label");
+                label.textContent = "Correcte";
+
+                answerDiv.appendChild(answerInput);
+                answerDiv.appendChild(correctRadio);
+                answerDiv.appendChild(label);
+                answersDiv.appendChild(answerDiv);
+            }
+
+            questionDiv.appendChild(answersDiv);
+            container.appendChild(questionDiv);
             container.appendChild(document.createElement("br"));
         }
 
-        // Traitement du formulaire de questions
+        // Modify the question form submission to include answers
         document.getElementById("question-form").addEventListener("submit", async (e) => {
             e.preventDefault();
 
             const quizId = document.getElementById("quiz-id")?.value;
             if (!quizId) return alert("Quiz non identifié");
 
-            const questionInputs = document.querySelectorAll("#questions-container input");
-            const questions = Array.from(questionInputs).map(i => i.value.trim()).filter(Boolean);
+            const questionItems = document.querySelectorAll(".question-item");
+            const questions = [];
+
+            questionItems.forEach((item, questionIndex) => {
+                const questionInput = item.querySelector("input[name='question']");
+                const answerInputs = item.querySelectorAll("input[type='text'][name^='answer_']");
+                const correctRadio = item.querySelector("input[type='radio']:checked");
+
+                const answers = Array.from(answerInputs).map(input => input.value.trim());
+                const correctAnswerIndex = parseInt(correctRadio.value);
+
+                questions.push({
+                    text: questionInput.value.trim(),
+                    answers: answers,
+                    correctAnswerIndex: correctAnswerIndex
+                });
+            });
 
             if (questions.length < 1 || questions.length > 10) {
                 return alert("Veuillez saisir entre 1 et 10 questions.");
@@ -97,7 +153,7 @@
 
             const title = document.getElementById("title").value;
             const description = document.getElementById("description").value;
-            const userId = 1; // À remplacer par l’ID réel depuis la session
+            const userId = 1; // À remplacer par l'ID réel depuis la session
 
             try {
                 const response = await fetch('http://localhost/quizProject/api/route.php?route=create_quiz', {

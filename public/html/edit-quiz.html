@@ -38,7 +38,7 @@
         let questionCount = 0;
         const maxQuestions = 10;
 
-        function addQuestion(initialText = "") {
+        function addQuestion(initialText = "", initialAnswers = []) {
             if (questionCount >= maxQuestions) return alert("Maximum 10 questions");
             questionCount++;
 
@@ -47,14 +47,49 @@
             const div = document.createElement("div");
             div.className = "question-item";
 
+            // Question input
+            const questionDiv = document.createElement("div");
             const input = document.createElement("input");
             input.type = "text";
             input.name = "question";
             input.required = true;
             input.placeholder = `Question ${questionCount}`;
             input.value = initialText;
+            questionDiv.appendChild(input);
 
-            // Ajouter un bouton pour supprimer la question
+            // Answers container
+            const answersDiv = document.createElement("div");
+            answersDiv.className = "answers-container";
+            answersDiv.style.marginLeft = "20px";
+
+            // Add 4 answer fields
+            for (let i = 0; i < 4; i++) {
+                const answerDiv = document.createElement("div");
+                answerDiv.style.marginBottom = "5px";
+
+                const answerInput = document.createElement("input");
+                answerInput.type = "text";
+                answerInput.name = `answer_${questionCount}_${i}`;
+                answerInput.required = true;
+                answerInput.placeholder = `Réponse ${i + 1}`;
+                answerInput.value = initialAnswers[i] || "";
+
+                const correctRadio = document.createElement("input");
+                correctRadio.type = "radio";
+                correctRadio.name = `correct_${questionCount}`;
+                correctRadio.value = i;
+                if (i === 0) correctRadio.checked = true;
+
+                const label = document.createElement("label");
+                label.textContent = "Correcte";
+
+                answerDiv.appendChild(answerInput);
+                answerDiv.appendChild(correctRadio);
+                answerDiv.appendChild(label);
+                answersDiv.appendChild(answerDiv);
+            }
+
+            // Delete button
             const btnDelete = document.createElement("button");
             btnDelete.type = "button";
             btnDelete.textContent = "Supprimer";
@@ -65,7 +100,8 @@
                 refreshPlaceholders();
             };
 
-            div.appendChild(input);
+            div.appendChild(questionDiv);
+            div.appendChild(answersDiv);
             div.appendChild(btnDelete);
 
             container.appendChild(div);
@@ -86,8 +122,11 @@
                 if (!response.ok) throw new Error("Erreur lors du chargement des questions");
                 const questions = await response.json();
 
-                // Afficher chaque question dans un input
-                questions.forEach(q => addQuestion(q.text));
+                // Afficher chaque question avec ses réponses
+                questions.forEach(q => {
+                    const answers = q.answers || [];
+                    addQuestion(q.text, answers);
+                });
             } catch (err) {
                 document.getElementById("message").textContent = err.message;
             }
@@ -151,8 +190,23 @@
             e.preventDefault();
 
             const quizId = document.getElementById("quiz-id").value;
-            const questionInputs = document.querySelectorAll("#questions-container input[name='question']");
-            const questions = Array.from(questionInputs).map(i => i.value.trim()).filter(Boolean);
+            const questionItems = document.querySelectorAll(".question-item");
+            const questions = [];
+
+            questionItems.forEach((item, questionIndex) => {
+                const questionInput = item.querySelector("input[name='question']");
+                const answerInputs = item.querySelectorAll("input[type='text'][name^='answer_']");
+                const correctRadio = item.querySelector("input[type='radio']:checked");
+
+                const answers = Array.from(answerInputs).map(input => input.value.trim());
+                const correctAnswerIndex = parseInt(correctRadio.value);
+
+                questions.push({
+                    text: questionInput.value.trim(),
+                    answers: answers,
+                    correctAnswerIndex: correctAnswerIndex
+                });
+            });
 
             if (questions.length < 1 || questions.length > maxQuestions) {
                 return alert("Veuillez saisir entre 1 et 10 questions.");
@@ -169,7 +223,6 @@
 
                 if (response.ok) {
                     alert("Questions mises à jour !");
-                    // Optionnel : recharger la page ou garder l'utilisateur sur place
                 } else {
                     alert(result.error || "Erreur lors de la mise à jour des questions.");
                 }

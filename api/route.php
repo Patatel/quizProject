@@ -45,6 +45,12 @@ if ($route === 'register' && $method === 'POST') {
 } elseif ($route === 'get_questions' && $method === 'GET') {
     require_once __DIR__ . '/../api/controllers/QuizController.php';
     getQuestionsByQuizId();
+} elseif ($route === 'submit_answers' && $method === 'POST') {
+    require_once __DIR__ . '/../api/controllers/AnswerController.php';
+    submitAnswers();
+} elseif ($route === 'get_answer_details' && $method === 'GET') {
+    require_once __DIR__ . '/../api/controllers/AnswerController.php';
+    getAnswerDetails();
 } else {
     http_response_code(404);
     echo json_encode(["error" => "Route non trouvée"]);
